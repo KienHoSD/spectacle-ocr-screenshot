@@ -24,10 +24,6 @@ A simple Qt application that integrates KDE Spectacle screenshot tool with Tesse
 - KDE Spectacle
 - Zxing (for QR code decoding)
 
-## Installation
-
-### Get the binaries from: [Releases Page](https://github.com/funinkina/spectacle-ocr-screenshot/releases/).
-
 ## Usage
 
 Run the application:
