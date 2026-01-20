@@ -40,7 +40,7 @@ Run the application:
 > Create a symlink to the executable in your local `PATH` for easy access:
 >
 > ```bash
-> sudo ln -s spectacle-ocr-screenshot /usr/local/bin/
+> sudo ln -s /path/to/spectacle-ocr-screenshot /usr/local/bin/
 > ```
 >
 > Then you can run the application from anywhere using or by assigning a keyboard shortcut to `spectacle-ocr-screenshot`
@@ -50,6 +50,8 @@ Run the application:
 2. After capturing, click on save, this will save to `/tmp`
 3. The extracted text will be displayed in the application window
 4. You can edit the text, copy it to clipboard or save it to a file
+5. If a QR code is detected, the link will be displayed
+6. More...
 
 ### Command Line Options
 
@@ -58,6 +60,7 @@ Run the application:
   - For multiple languages, join them with '+' (e.g., `--lang eng+hin` for English and Hindi)
 
 - `--disable-qr`: Disable QR code detection
+- `--web`: Open the resulting text in the default web browser (Best use with Yomichan or similar extensions)
 
 #### Examples:
 ```bash
@@ -90,21 +93,11 @@ cd spectacle-ocr-screenshot
 ```
 
 #### 2. Install build dependencies:
-
-For Arch Linux:
-```bash
-sudo pacman -S qt6-base tesseract leptonica spectacle
-```
-
 For Ubuntu/Debian:
 ```bash
-sudo apt install qt6-base-dev tesseract-ocr libleptonica-dev kde-spectacle
+sudo apt install qt6-base-dev tesseract-ocr libleptonica-dev kde-spectacle libtesseract-dev libxkbcommon-dev pkg-config libzxing-dev
 ```
-
-For Fedora:
-```bash
-sudo dnf install qt6-qtbase tesseract leptonica spectacle
-```
+Others: idk... install the equivalent packages for your distribution.
 
 #### 3. Build the project:
 
@@ -117,8 +110,7 @@ make
 Make sure you have cmake installed!
 
 ```bash
-mkdir build && cd build
-cmake ..
+cmake .
 make
 ```
 
@@ -128,7 +120,3 @@ make
 ## License
 
 [MIT](LICENSE)
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=funinkina/spectacle-ocr-screenshot&type=Date)](https://www.star-history.com/#funinkina/spectacle-ocr-screenshot&Date)
