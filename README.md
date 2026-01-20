@@ -56,7 +56,7 @@ Run the application:
   - For multiple languages, join them with '+' (e.g., `--lang eng+hin` for English and Hindi)
 
 - `--disable-qr`: Disable QR code detection
-- `--web`: Open the resulting text in the default web browser (Best use with Yomichan or similar extensions)
+- `--web`: Open the resulting text in the default web browser (Best use with Yomitan or similar extensions)
 
 #### Examples:
 ```bash
@@ -68,6 +68,12 @@ Run the application:
 
 # Use multiple languages (English and Spanish)
 ./spectacle-ocr-screenshot --lang eng+spa
+
+# Disable QR code detection
+./spectacle-ocr-screenshot --disable-qr
+
+# Open result in web browser (Better for use with Yomitan/similar extensions)
+./spectacle-ocr-screenshot --web
 ```
 
 ## Available Languages
