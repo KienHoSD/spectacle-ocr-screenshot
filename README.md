@@ -1,6 +1,6 @@
 # Spectacle OCR Screenshot
 
-A simple Qt application that integrates KDE Spectacle screenshot tool with Tesseract OCR to extract text from screenshots as well QR codes.
+A simple Qt application that integrates KDE Spectacle screenshot tool with Tesseract OCR to extract text from screenshots as well QR codes. This tool best use with [Yomitan](https://yomitan.wiki/) and a [Translator extension](https://github.com/FilipePS/Traduzir-paginas-web)
 
 ![Screenshot](screenshot.png)
 
@@ -9,7 +9,7 @@ A simple Qt application that integrates KDE Spectacle screenshot tool with Tesse
 - 📷 Capture screenshots using KDE's Spectacle tool
 - 🔍 Extract text from screenshots using Tesseract OCR
 - 📱 Decode QR codes from screenshots
-- 💻 Display extracted text in a user-friendly interface
+- 💻 Display extracted text in a user-friendly interface (Qt6 GUI, Web Browser)
 - 🌍 Support for multiple languages
 - ✏️ Edit extracted text before saving
 - 📋 Copy text to clipboard
@@ -103,15 +103,19 @@ Others: idk... install the equivalent packages for your distribution.
 
 #### 3. Build the project:
 
+##### Qmake:
 ```bash
 qmake6 simple.pro
 make
 ```
 
-### You can also build using `cmake`:
-Make sure you have cmake installed!
-
+##### Cmake (Make sure you have cmake installed):
 ```bash
+sudo apt install cmake
+```
+
+Then run this in the project directory:
+```
 cmake .
 make
 ```
