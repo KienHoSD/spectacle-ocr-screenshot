@@ -46,7 +46,7 @@ Run the application:
 2. After capturing, click on save, this will save to `/tmp`
 3. The extracted text will be displayed in the application window
 4. You can edit the text, copy it to clipboard or save it to a file
-5. If a QR code is detected, the link will be displayed
+5. If a QR code is detected, the decoded message will be displayed
 6. More...
 
 ### Command Line Options
