@@ -21,6 +21,8 @@
 #include <QImage>
 #include <QDesktopServices>
 #include <QUrl>
+#include <QRegularExpression>
+#include <QTextStream>
 #include <memory>
 
 bool takeScreenshot(const QString& outputPath) {
@@ -104,12 +106,94 @@ OcrResult extractText(const QString& imagePath, const QString& language) {
 
 	char* outText = ocr->GetUTF8Text();
 	result.text = QString::fromUtf8(outText);
+	result.text.replace("\r\n", "\n");
+	result.text.replace("\r", "\n");
+	result.text.replace("\f", "\n");
+	result.text.replace(QRegularExpression("\\n{2,}"), "\n");
 
 	delete[] outText;
 	pixDestroy(&image);
 	ocr->End();
 
 	return result;
+}
+
+QString createOcrHtml(const QString& text) {
+	return QString(
+		"<!DOCTYPE html>\n"
+		"<html lang=\"en\">\n"
+		"<head>\n"
+		"    <meta charset=\"UTF-8\">\n"
+		"    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
+		"    <title>OCR Results</title>\n"
+		"    <style>\n"
+		"        body {\n"
+		"            font-family: Arial, sans-serif;\n"
+		"            margin: 20px;\n"
+		"            line-height: 1.6;\n"
+		"            background-color: #f4f4f4;\n"
+		"        }\n"
+		"        .container {\n"
+		"            max-width: 800px;\n"
+		"            margin: 0 auto;\n"
+		"            background-color: white;\n"
+		"            padding: 20px;\n"
+		"            border-radius: 8px;\n"
+		"            box-shadow: 0 2px 4px rgba(0,0,0,0.1);\n"
+		"        }\n"
+		"        h1 {\n"
+		"            color: #333;\n"
+		"        }\n"
+		"        .timestamp {\n"
+		"            color: #666;\n"
+		"            font-size: 0.9em;\n"
+		"        }\n"
+		"        .content {\n"
+		"            width: 100%;\n"
+		"            min-height: 300px;\n"
+		"            padding: 15px;\n"
+		"            border: 2px solid #007bff;\n"
+		"            border-radius: 4px;\n"
+		"            font-family: 'Courier New', monospace;\n"
+		"            font-size: 14px;\n"
+		"            box-sizing: border-box;\n"
+		"            resize: vertical;\n"
+		"        }\n"
+		"    </style>\n"
+		"</head>\n"
+		"<body>\n"
+		"    <div class=\"container\">\n"
+		"        <h1>OCR Results</h1>\n"
+		"        <p class=\"timestamp\">Generated: %1</p>\n"
+		"        <textarea id=\"content\" class=\"content\">%2</textarea>\n"
+		"    </div>\n"
+		"</body>\n"
+		"</html>\n")
+		.arg(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss"), text.toHtmlEscaped());
+}
+
+bool openOcrResultInBrowser(const QString& text, QString* errorMessage = nullptr) {
+	QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_hhmmss");
+	QString htmlPath = QDir::tempPath() + "/ocr_result_" + timestamp + ".html";
+
+	QFile file(htmlPath);
+	if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+		if (errorMessage)
+			*errorMessage = "Failed to create temporary HTML file";
+		return false;
+	}
+
+	QTextStream out(&file);
+	out << createOcrHtml(text);
+	file.close();
+
+	if (!QDesktopServices::openUrl(QUrl::fromLocalFile(htmlPath))) {
+		if (errorMessage)
+			*errorMessage = "Could not open default web browser";
+		return false;
+	}
+
+	return true;
 }
 
 int main(int argc, char* argv[]) {
@@ -226,114 +310,13 @@ int main(int argc, char* argv[]) {
 
 	QObject::connect(browserButton, &QPushButton::clicked, [&]() {
 		if (!textEdit->toPlainText().isEmpty()) {
-			// Create a temporary HTML file with the OCR results
-			QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_hhmmss");
-			QString htmlPath = QDir::tempPath() + "/ocr_result_" + timestamp + ".html";
-			
-			QFile file(htmlPath);
-			if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-				QTextStream out(&file);
-				out << "<!DOCTYPE html>\n"
-					<< "<html lang=\"en\">\n"
-					<< "<head>\n"
-					<< "    <meta charset=\"UTF-8\">\n"
-					<< "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
-					<< "    <title>OCR Results</title>\n"
-					<< "    <style>\n"
-					<< "        body {\n"
-					<< "            font-family: Arial, sans-serif;\n"
-					<< "            margin: 20px;\n"
-					<< "            line-height: 1.6;\n"
-					<< "            background-color: #f4f4f4;\n"
-					<< "        }\n"
-					<< "        .container {\n"
-					<< "            max-width: 800px;\n"
-					<< "            margin: 0 auto;\n"
-					<< "            background-color: white;\n"
-					<< "            padding: 20px;\n"
-					<< "            border-radius: 8px;\n"
-					<< "            box-shadow: 0 2px 4px rgba(0,0,0,0.1);\n"
-					<< "        }\n"
-					<< "        h1 {\n"
-					<< "            color: #333;\n"
-					<< "        }\n"
-					<< "        .timestamp {\n"
-					<< "            color: #666;\n"
-					<< "            font-size: 0.9em;\n"
-					<< "        }\n"
-					<< "        .content {\n"
-					<< "            width: 100%;\n"
-					<< "            min-height: 300px;\n"
-					<< "            padding: 15px;\n"
-					<< "            border: 2px solid #007bff;\n"
-					<< "            border-radius: 4px;\n"
-					<< "            font-family: 'Courier New', monospace;\n"
-					<< "            font-size: 14px;\n"
-					<< "            box-sizing: border-box;\n"
-					<< "            resize: vertical;\n"
-					<< "        }\n"
-					<< "        .button-group {\n"
-					<< "            margin-top: 15px;\n"
-					<< "            display: flex;\n"
-					<< "            gap: 10px;\n"
-					<< "        }\n"
-					<< "        button {\n"
-					<< "            padding: 10px 20px;\n"
-					<< "            background-color: #007bff;\n"
-					<< "            color: white;\n"
-					<< "            border: none;\n"
-					<< "            border-radius: 4px;\n"
-					<< "            cursor: pointer;\n"
-					<< "            font-size: 14px;\n"
-					<< "        }\n"
-					<< "        button:hover {\n"
-					<< "            background-color: #0056b3;\n"
-					<< "        }\n"
-					<< "    </style>\n"
-					<< "</head>\n"
-					<< "<body>\n"
-					<< "    <div class=\"container\">\n"
-					<< "        <h1>OCR Results</h1>\n"
-					<< "        <p class=\"timestamp\">Generated: " << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss") << "</p>\n"
-					<< "        <textarea id=\"content\" class=\"content\">" << textEdit->toPlainText().toHtmlEscaped() << "</textarea>\n"
-					<< "        <div class=\"button-group\">\n"
-					<< "            <button onclick=\"copyText()\">Copy to Clipboard</button>\n"
-					<< "            <button onclick=\"downloadText()\">Download as TXT</button>\n"
-					<< "        </div>\n"
-					<< "    </div>\n"
-					<< "    <script>\n"
-					<< "        function copyText() {\n"
-					<< "            const textarea = document.getElementById('content');\n"
-					<< "            textarea.select();\n"
-					<< "            document.execCommand('copy');\n"
-					<< "            alert('Text copied to clipboard!');\n"
-					<< "        }\n"
-					<< "        function downloadText() {\n"
-					<< "            const textarea = document.getElementById('content');\n"
-					<< "            const text = textarea.value;\n"
-					<< "            const element = document.createElement('a');\n"
-					<< "            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));\n"
-					<< "            element.setAttribute('download', 'ocr_result.txt');\n"
-					<< "            element.style.display = 'none';\n"
-					<< "            document.body.appendChild(element);\n"
-					<< "            element.click();\n"
-					<< "            document.body.removeChild(element);\n"
-					<< "        }\n"
-					<< "    </script>\n"
-					<< "</body>\n"
-					<< "</html>\n";
-				file.close();
-				
-				// Open the HTML file in the default web browser
-				if (QDesktopServices::openUrl(QUrl::fromLocalFile(htmlPath))) {
-					label->setText("OCR results opened in web browser");
-				} else {
-					label->setText("Failed to open web browser");
-					QMessageBox::warning(&window, "Warning", "Could not open default web browser");
-				}
-			} else {
-				label->setText("Failed to create HTML file");
-				QMessageBox::critical(&window, "Error", "Failed to create temporary HTML file");
+			QString errorMessage;
+			if (openOcrResultInBrowser(textEdit->toPlainText(), &errorMessage)) {
+				label->setText("OCR results opened in web browser");
+			}
+			else {
+				label->setText("Failed to open web browser");
+				QMessageBox::warning(&window, "Warning", errorMessage);
 			}
 		}
 		else {
@@ -351,104 +334,7 @@ int main(int argc, char* argv[]) {
 				
 				// Auto-open in browser if requested
 				if (openInBrowser) {
-					QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_hhmmss");
-					QString htmlPath = QDir::tempPath() + "/ocr_result_" + timestamp + ".html";
-					
-					QFile file(htmlPath);
-					if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-						QTextStream out(&file);
-						out << "<!DOCTYPE html>\n"
-							<< "<html lang=\"en\">\n"
-							<< "<head>\n"
-							<< "    <meta charset=\"UTF-8\">\n"
-							<< "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
-							<< "    <title>OCR Results</title>\n"
-							<< "    <style>\n"
-							<< "        body {\n"
-							<< "            font-family: Arial, sans-serif;\n"
-							<< "            margin: 20px;\n"
-							<< "            line-height: 1.6;\n"
-							<< "            background-color: #f4f4f4;\n"
-							<< "        }\n"
-							<< "        .container {\n"
-							<< "            max-width: 800px;\n"
-							<< "            margin: 0 auto;\n"
-							<< "            background-color: white;\n"
-							<< "            padding: 20px;\n"
-							<< "            border-radius: 8px;\n"
-							<< "            box-shadow: 0 2px 4px rgba(0,0,0,0.1);\n"
-							<< "        }\n"
-							<< "        h1 {\n"
-							<< "            color: #333;\n"
-							<< "        }\n"
-							<< "        .timestamp {\n"
-							<< "            color: #666;\n"
-							<< "            font-size: 0.9em;\n"
-							<< "        }\n"
-							<< "        .content {\n"
-							<< "            width: 100%;\n"
-							<< "            min-height: 300px;\n"
-							<< "            padding: 15px;\n"
-							<< "            border: 2px solid #007bff;\n"
-							<< "            border-radius: 4px;\n"
-							<< "            font-family: 'Courier New', monospace;\n"
-							<< "            font-size: 14px;\n"
-							<< "            box-sizing: border-box;\n"
-							<< "            resize: vertical;\n"
-							<< "        }\n"
-							<< "        .button-group {\n"
-							<< "            margin-top: 15px;\n"
-							<< "            display: flex;\n"
-							<< "            gap: 10px;\n"
-							<< "        }\n"
-							<< "        button {\n"
-							<< "            padding: 10px 20px;\n"
-							<< "            background-color: #007bff;\n"
-							<< "            color: white;\n"
-							<< "            border: none;\n"
-							<< "            border-radius: 4px;\n"
-							<< "            cursor: pointer;\n"
-							<< "            font-size: 14px;\n"
-							<< "        }\n"
-							<< "        button:hover {\n"
-							<< "            background-color: #0056b3;\n"
-							<< "        }\n"
-							<< "    </style>\n"
-							<< "</head>\n"
-							<< "<body>\n"
-							<< "    <div class=\"container\">\n"
-							<< "        <h1>OCR Results</h1>\n"
-							<< "        <p class=\"timestamp\">Generated: " << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss") << "</p>\n"
-							<< "        <textarea id=\"content\" class=\"content\">" << result.text.toHtmlEscaped() << "</textarea>\n"
-							<< "        <div class=\"button-group\">\n"
-							<< "            <button onclick=\"copyText()\">Copy to Clipboard</button>\n"
-							<< "            <button onclick=\"downloadText()\">Download as TXT</button>\n"
-							<< "        </div>\n"
-							<< "    </div>\n"
-							<< "    <script>\n"
-							<< "        function copyText() {\n"
-							<< "            const textarea = document.getElementById('content');\n"
-							<< "            textarea.select();\n"
-							<< "            document.execCommand('copy');\n"
-							<< "            alert('Text copied to clipboard!');\n"
-							<< "        }\n"
-							<< "        function downloadText() {\n"
-							<< "            const textarea = document.getElementById('content');\n"
-							<< "            const text = textarea.value;\n"
-							<< "            const element = document.createElement('a');\n"
-							<< "            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));\n"
-							<< "            element.setAttribute('download', 'ocr_result.txt');\n"
-							<< "            element.style.display = 'none';\n"
-							<< "            document.body.appendChild(element);\n"
-							<< "            element.click();\n"
-							<< "            document.body.removeChild(element);\n"
-							<< "        }\n"
-							<< "    </script>\n"
-							<< "</body>\n"
-							<< "</html>\n";
-						file.close();
-						QDesktopServices::openUrl(QUrl::fromLocalFile(htmlPath));
-					}
+					openOcrResultInBrowser(textEdit->toPlainText());
 					return 0;
 				}
 				
@@ -468,104 +354,7 @@ int main(int argc, char* argv[]) {
 			
 			// Auto-open in browser if requested
 			if (openInBrowser) {
-				QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_hhmmss");
-				QString htmlPath = QDir::tempPath() + "/ocr_result_" + timestamp + ".html";
-				
-				QFile file(htmlPath);
-				if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-					QTextStream out(&file);
-					out << "<!DOCTYPE html>\n"
-						<< "<html lang=\"en\">\n"
-						<< "<head>\n"
-						<< "    <meta charset=\"UTF-8\">\n"
-						<< "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
-						<< "    <title>OCR Results</title>\n"
-						<< "    <style>\n"
-						<< "        body {\n"
-						<< "            font-family: Arial, sans-serif;\n"
-						<< "            margin: 20px;\n"
-						<< "            line-height: 1.6;\n"
-						<< "            background-color: #f4f4f4;\n"
-						<< "        }\n"
-						<< "        .container {\n"
-						<< "            max-width: 800px;\n"
-						<< "            margin: 0 auto;\n"
-						<< "            background-color: white;\n"
-						<< "            padding: 20px;\n"
-						<< "            border-radius: 8px;\n"
-						<< "            box-shadow: 0 2px 4px rgba(0,0,0,0.1);\n"
-						<< "        }\n"
-						<< "        h1 {\n"
-						<< "            color: #333;\n"
-						<< "        }\n"
-						<< "        .timestamp {\n"
-						<< "            color: #666;\n"
-						<< "            font-size: 0.9em;\n"
-						<< "        }\n"
-						<< "        .content {\n"
-						<< "            width: 100%;\n"
-						<< "            min-height: 300px;\n"
-						<< "            padding: 15px;\n"
-						<< "            border: 2px solid #007bff;\n"
-						<< "            border-radius: 4px;\n"
-						<< "            font-family: 'Courier New', monospace;\n"
-						<< "            font-size: 14px;\n"
-						<< "            box-sizing: border-box;\n"
-						<< "            resize: vertical;\n"
-						<< "        }\n"
-						<< "        .button-group {\n"
-						<< "            margin-top: 15px;\n"
-						<< "            display: flex;\n"
-						<< "            gap: 10px;\n"
-						<< "        }\n"
-						<< "        button {\n"
-						<< "            padding: 10px 20px;\n"
-						<< "            background-color: #007bff;\n"
-						<< "            color: white;\n"
-						<< "            border: none;\n"
-						<< "            border-radius: 4px;\n"
-						<< "            cursor: pointer;\n"
-						<< "            font-size: 14px;\n"
-						<< "        }\n"
-						<< "        button:hover {\n"
-						<< "            background-color: #0056b3;\n"
-						<< "        }\n"
-						<< "    </style>\n"
-						<< "</head>\n"
-						<< "<body>\n"
-						<< "    <div class=\"container\">\n"
-						<< "        <h1>OCR Results</h1>\n"
-						<< "        <p class=\"timestamp\">Generated: " << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss") << "</p>\n"
-						<< "        <textarea id=\"content\" class=\"content\">" << result.text.toHtmlEscaped() << "</textarea>\n"
-						<< "        <div class=\"button-group\">\n"
-						<< "            <button onclick=\"copyText()\">Copy to Clipboard</button>\n"
-						<< "            <button onclick=\"downloadText()\">Download as TXT</button>\n"
-						<< "        </div>\n"
-						<< "    </div>\n"
-						<< "    <script>\n"
-						<< "        function copyText() {\n"
-						<< "            const textarea = document.getElementById('content');\n"
-						<< "            textarea.select();\n"
-						<< "            document.execCommand('copy');\n"
-						<< "            alert('Text copied to clipboard!');\n"
-						<< "        }\n"
-						<< "        function downloadText() {\n"
-						<< "            const textarea = document.getElementById('content');\n"
-						<< "            const text = textarea.value;\n"
-						<< "            const element = document.createElement('a');\n"
-						<< "            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));\n"
-						<< "            element.setAttribute('download', 'ocr_result.txt');\n"
-						<< "            element.style.display = 'none';\n"
-						<< "            document.body.appendChild(element);\n"
-						<< "            element.click();\n"
-						<< "            document.body.removeChild(element);\n"
-						<< "        }\n"
-						<< "    </script>\n"
-						<< "</body>\n"
-						<< "</html>\n";
-					file.close();
-					QDesktopServices::openUrl(QUrl::fromLocalFile(htmlPath));
-				}
+				openOcrResultInBrowser(textEdit->toPlainText());
 				return 0;
 			}
 		}
