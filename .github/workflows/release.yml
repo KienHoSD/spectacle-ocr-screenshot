@@ -14,7 +14,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install dependencies
-        run: sudo apt update && sudo apt install -y qt6-base-dev tesseract-ocr libleptonica-dev libtesseract-dev
+        run: sudo apt install qt6-base-dev tesseract-ocr libleptonica-dev kde-spectacle libtesseract-dev libxkbcommon-dev pkg-config libzxing-dev
 
       - name: Build project
         run: |

@@ -23,12 +23,17 @@
 #include <QUrl>
 #include <QRegularExpression>
 #include <QTextStream>
+#include <QFileInfo>
 #include <memory>
 
 bool takeScreenshot(const QString& outputPath) {
+	QFile::remove(outputPath);
+
 	int exitCode = QProcess::execute("spectacle", QStringList()
 		<< "-b" << "-r" << "-n" << "-o" << outputPath);
-	return exitCode == 0;
+
+	QFileInfo screenshotInfo(outputPath);
+	return exitCode == 0 && screenshotInfo.exists() && screenshotInfo.size() > 0;
 }
 
 struct OcrResult {
@@ -255,7 +260,8 @@ int main(int argc, char* argv[]) {
 
 	window.setLayout(layout);
 
-	QString tempPath = QDir::tempPath() + "/screenshot.png";
+	QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_hhmmss_zzz");
+	QString tempPath = QDir::tempPath() + "/screenshot_" + timestamp + ".png";
 
 	QObject::connect(copyButton, &QPushButton::clicked, [&]() {
 		if (!textEdit->toPlainText().isEmpty()) {
@@ -361,11 +367,7 @@ int main(int argc, char* argv[]) {
 		window.show();
 	}
 	else {
-		textEdit->setText("");
-		label->setText("Error occurred while taking screenshot");
-		window.show();
-		QMessageBox::critical(&window, "Error",
-			"Failed to launch Spectacle or take screenshot");
+		return 0;
 	}
 
 	return app.exec();
